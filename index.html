@@ -100,9 +100,16 @@
 
     <script>
         // ═══ Init Telegram Web App ═══
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready();
+        let tg = null;
+        let isTelegram = false;
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                tg = window.Telegram.WebApp;
+                tg.expand();
+                tg.ready();
+                isTelegram = true;
+            }
+        } catch(e) {}
 
         // ═══ Parse URL params ═══
         const params = new URLSearchParams(window.location.search);
@@ -111,9 +118,17 @@
         const AD_TOKEN = 'ad_' + USER_ID + '_' + Date.now();
         let adCompleted = false;
 
+        // ═══ Show demo banner if not in Telegram ═══
+        if (!isTelegram) {
+            const banner = document.createElement('div');
+            banner.style.cssText = 'background:#f59e0b;color:#1e293b;padding:12px;text-align:center;font-size:13px;font-weight:600;border-radius:12px;margin-bottom:20px;';
+            banner.innerHTML = '⚠️ <b>Demo Mode</b> — Mở từ Telegram Bot để dùng thật';
+            document.querySelector('.container').prepend(banner);
+        }
+
         // ═══ Close Web App & send data back to bot ═══
         function closeApp() {
-            if (adCompleted) {
+            if (adCompleted && isTelegram) {
                 tg.sendData(JSON.stringify({
                     action: 'ad_completed',
                     token: AD_TOKEN,
@@ -121,8 +136,18 @@
                     reward: REWARD_TOKENS,
                     timestamp: Date.now()
                 }));
+                tg.close();
+            } else if (adCompleted && !isTelegram) {
+                // Demo: show what would be sent
+                const data = JSON.stringify({
+                    action: 'ad_completed',
+                    token: AD_TOKEN,
+                    uid: USER_ID,
+                    reward: REWARD_TOKENS,
+                    timestamp: Date.now()
+                });
+                alert('📤 Data gửi về bot:\n\n' + JSON.stringify(JSON.parse(data), null, 2));
             }
-            tg.close();
         }
 
         // ═══ Show success screen ═══
@@ -130,8 +155,12 @@
             adCompleted = true;
             document.getElementById('ad-watching').style.display = 'none';
             document.getElementById('ad-success').style.display = 'block';
-            document.getElementById('reward-text').textContent = 
-                `+${REWARD_TOKENS} tokens đã được thêm`;
+            const rewardText = document.getElementById('reward-text');
+            if (isTelegram) {
+                rewardText.textContent = `+${REWARD_TOKENS} tokens đã được thêm`;
+            } else {
+                rewardText.innerHTML = `+${REWARD_TOKENS} tokens đã được thêm<br><small style="opacity:0.7">(Demo — chạy trong Telegram sẽ nhận thật)</small>`;
+            }
         }
 
         // ═══ Show error screen ═══
